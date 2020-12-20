@@ -17,6 +17,7 @@ void make_cube(const Eigen::Vector3d &corner, const Eigen::Vector3d &size, Eigen
     V.row(5) = corner + sz + sx;
     V.row(6) = corner + sz + sy;
     V.row(7) = corner + sz + sy + sx;
+    // TODO: fix face orientations
     F << 0, 1, 4,
             0, 2, 6,
             0, 6, 4,
