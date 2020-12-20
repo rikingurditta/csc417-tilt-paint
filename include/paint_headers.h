@@ -10,7 +10,7 @@
 void make_grid(
     int nx,
     int ny,
-    Eigen::RowVector3d corner,
+    Eigen::Vector3d corner,
     double spacing,
     Eigen::MatrixXd & grid_points);
 
@@ -100,7 +100,7 @@ void poisson_surface_reconstruction(
     Eigen::MatrixXd & V,
     Eigen::MatrixXi & F);
 
-
-//TODO: get rid of this pls
-void a_function(
-  const float haha);
+void paint_colours(
+    const int nx,
+    const int ny,
+    Eigen::MatrixXd & colour_mat);
