@@ -10,7 +10,7 @@
 void make_grid(
     int nx,
     int ny,
-    Eigen::RowVector3d corner,
+    Eigen::Vector3d corner,
     double spacing,
     Eigen::MatrixXd & grid_points);
 

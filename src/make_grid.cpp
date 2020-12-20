@@ -4,7 +4,7 @@
 void make_grid(
     const int nx,
     const int ny,
-    const Eigen::RowVector3d corner,
+    const Eigen::Vector3d corner,
     const double spacing,
     Eigen::MatrixXd & grid_points)
 {
@@ -20,8 +20,8 @@ void make_grid(
         for(int i = 0; i < nx; i++) {
             for(int j = 0; j < ny; j++){
                     // Convert subscript to index
-                    int ind = nx * i + j;
-                    grid_points.row(ind) = corner + spacing * Eigen::RowVector3d(i,j, 0.0);
+                    int ind = nx * j + i;
+                    grid_points.row(ind) = corner + spacing * Eigen::Vector3d(i, j, 0.0);
             }
         }
 
