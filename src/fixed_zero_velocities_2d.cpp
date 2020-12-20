@@ -1,6 +1,6 @@
-#include "fixed_zero_velocities.h"
+#include "fixed_zero_velocities_2d.h"
 
-void fixed_zero_velocities(int nx, int ny, Eigen::SparseMatrix<double> PTP) {
+void fixed_zero_velocities(int nx, int ny, Eigen::SparseMatrix<double> PP) {
     std::vector<Eigen::Triplet<double>> tl;
     int dx_grid_size = (nx + 1) * ny;
     int dy_grid_size = nx * (ny + 1);
@@ -15,6 +15,6 @@ void fixed_zero_velocities(int nx, int ny, Eigen::SparseMatrix<double> PTP) {
             tl.emplace_back(dx_grid_size + i + j * nx, dx_grid_size + i + j * nx, 1);
         }
     }
-    PTP.resize(dx_grid_size + dy_grid_size, dx_grid_size + dy_grid_size);
-    PTP.setFromTriplets(tl.begin(), tl.end());
+    PP.resize(dx_grid_size + dy_grid_size, dx_grid_size + dy_grid_size);
+    PP.setFromTriplets(tl.begin(), tl.end());
 }
