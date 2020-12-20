@@ -99,9 +99,8 @@ int main(int argc, char *argv[]) {
         viewer.data().clear();
         // viewer.data().set_points(grid_points, center_viewer);
         viewer.data().set_mesh(V, F);
-
-
     };
+
     set_points();
     viewer.callback_key_pressed = [&](igl::opengl::glfw::Viewer&, unsigned int key,int)
     {
@@ -111,6 +110,19 @@ int main(int argc, char *argv[]) {
 
         return false;
     };
+
+    Eigen::MatrixXd C(F.rows(),3);
+    C << Eigen::RowVector3d(1.0,1.0,1.0).replicate(F.rows() / 5,1),
+         Eigen::RowVector3d(1.0,1.0,0.0).replicate(F.rows() / 5,1),
+         Eigen::RowVector3d(0.0,1.0,1.0).replicate(F.rows() / 5,1),
+         Eigen::RowVector3d(1.0,0.0,1.0).replicate(F.rows() / 5,1),
+         Eigen::RowVector3d(0.0,0.0,0.0).replicate(F.rows() / 5,1);
+
+
+    // paint_colours(nx, ny, C);
+
+    viewer.data().set_colors(C);
+    viewer.data().set_face_based(true);
     viewer.data().point_size = 2;
     viewer.launch();
     
