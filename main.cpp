@@ -28,10 +28,17 @@ int main(int argc, char *argv[]) {
     // Main architecture goes as follows:
     // Values are hardcoded below, unless otherwise specified by command line arguments
 
+    // grid size
     int nx = 9, ny = 11;
+    // grid cell width
     double spacing = 0.5;
+    // number of particles
+    int n = 99;
+    // time step
     double dt = 0.01;
+    // fluid density
     double rho = 0.1;
+    // particle volume
     double particle_volume = spacing * spacing;
     // global gravity vector
     Eigen::Vector3d g(0, -9.8 * 10, 0);
@@ -46,7 +53,6 @@ int main(int argc, char *argv[]) {
     Eigen::VectorXd num_particles_grid = Eigen::VectorXd::Zero(nx * ny);
 
     // create particles
-    int n = 99;
     Eigen::MatrixXd particles = Eigen::MatrixXd::Zero(n, 2);
     Eigen::MatrixXd particle_velocities = Eigen::MatrixXd::Zero(n, 2);
     for (int i = 0; i < n; i++) {
