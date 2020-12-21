@@ -1,6 +1,6 @@
 #include "grad_matrix_2d.h"
 
-void grad_matrix_2d(const int nx, const int ny, Eigen::SparseMatrix<double> D) {
+void grad_matrix_2d(const int nx, const int ny, Eigen::SparseMatrix<double> &D) {
     std::vector<Eigen::Triplet<double>> tl;
     tl.reserve(2 * (nx - 1) * ny + nx * (ny - 1));
     int dx_grid_size = (nx - 1) * ny;
