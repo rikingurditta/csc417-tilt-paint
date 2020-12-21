@@ -11,6 +11,7 @@
 #include "fixed_zero_velocities_2d.h"
 #include "div_matrix_2d.h"
 #include "grad_matrix_2d.h"
+#include "grad_grid_to_velocity_grid.h"
 #include "advect_2d.h"
 #include "apply_gravity_2d.h"
 #include "particles_to_velocity_grid_2d.h"
@@ -72,6 +73,9 @@ int main(int argc, char *argv[]) {
     Eigen::SparseMatrix<double> D;
     grad_matrix_2d(nx, ny, D);
 
+    Eigen::SparseMatrix<double> D_to_vel;
+    grad_grid_to_velocity_grid(nx, ny, D_to_vel);
+
     std::cout << "B: " << B.rows() << ", " << B.cols() << "\n";
     std::cout << "PP: " << PP.rows() << ", " << PP.cols() << "\n";
     std::cout << "D: " << D.rows() << ", " << D.cols() << "\n";
@@ -89,7 +93,7 @@ int main(int argc, char *argv[]) {
         std::cout << "g_curr: " << g_curr.transpose() << "\n";
         apply_gravity_2d(delta_t, g_curr_2d, particle_velocities);
 //        particles_to_velocity_grid_2d(particles, particle_velocities, nx, ny, u);
-        pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, u_new);
+        pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, D_to_vel, u_new);
         u = u_new;
     };
 
@@ -234,5 +238,6 @@ bool rotate_grid(unsigned int key, Eigen::Matrix3d &R) {
 
 void apply_rotation(const Eigen::MatrixXd &R, const Eigen::RowVector3d &centre, const Eigen::MatrixXd &points,
                     Eigen::MatrixXd &result) {
-    result = (points - centre.replicate(points.rows(), 1)) * R.transpose();
+    Eigen::MatrixXd shift_centre = centre.replicate(points.rows(), 1);
+    result = (points - shift_centre) * R.transpose() + shift_centre;
 }

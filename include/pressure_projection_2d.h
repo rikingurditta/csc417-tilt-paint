@@ -23,4 +23,5 @@ void pressure_projection_2d(const Eigen::VectorXd &u,
                             const Eigen::SparseMatrix<double> &PP,
                             const Eigen::SparseMatrix<double> &B,
                             const Eigen::SparseMatrix<double> &D,
+                            const Eigen::SparseMatrix<double> &D_to_vel,
                             Eigen::VectorXd &u_new);
