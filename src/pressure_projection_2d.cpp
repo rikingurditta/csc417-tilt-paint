@@ -14,7 +14,7 @@ void pressure_projection_2d(const Eigen::VectorXd &u,
                             Eigen::VectorXd &u_new) {
     // solve linear system D * B * p = Δx*ρ/Δx * B * PP * u, i.e. ∇·∇p = ∇·u
     Eigen::SparseMatrix<double> A = B * D;
-    Eigen::BiCGSTAB<Eigen::SparseMatrix<double>> solver;
+    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
     solver.compute(A);
     std::cout << "compute success: " << (solver.info() == Eigen::Success) << "\n";
     Eigen::VectorXd p = solver.solve(dx * rho / dt * B * PP * u);

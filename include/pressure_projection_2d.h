@@ -1,5 +1,6 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
+#include <Eigen/OrderingMethods>
 
 //Input:
 //  u - current velocity grid as a stacked vector (x_vel y_vel)^T where x_vel is the horizontal staggered velocity grid
