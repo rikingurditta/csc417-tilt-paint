@@ -1,4 +1,5 @@
 #include "particles_to_vel_grid_2d.h"
+#include <iostream>
 
 void particles_to_vel_grid_2d(Eigen::MatrixXd &particles,
                               Eigen::MatrixXd &particle_velocities,
@@ -19,17 +20,17 @@ void particles_to_vel_grid_2d(Eigen::MatrixXd &particles,
         double w01 = (grid_x + 1 - x) * (y - grid_y);
         double w11 = (x - grid_x) * (y - grid_y);
         // distribute velocity to grid with bilinear weights
-        if (0 <= grid_x <= nx and 0 <= grid_y < ny - 1) {
+        if (0 <= grid_x and grid_x <= nx and 0 <= grid_y and grid_y < ny - 2) {
             u(grid_x + grid_y * (nx + 1)) += particle_velocities(i, 0) * w00 * dx * dx / particle_volume;
             u(grid_x + 1 + grid_y * (nx + 1)) += particle_velocities(i, 0) * w10 * dx * dx / particle_volume;
             u(grid_x + (grid_y + 1) * (nx + 1)) += particle_velocities(i, 0) * w01 * dx * dx / particle_volume;
             u(grid_x + 1 + (grid_y + 1) * (nx + 1)) += particle_velocities(i, 0) * w11 * dx * dx / particle_volume;
         }
-        if (0 <= grid_x < nx - 1 and 0 <= grid_y <= ny) {
-            u(grid_x + grid_y * nx) += particle_velocities(i, 1) * w00 * dx * dx / particle_volume;
-            u(grid_x + 1 + grid_y * nx) += particle_velocities(i, 1) * w10 * dx * dx / particle_volume;
-            u(grid_x + (grid_y + 1) * nx) += particle_velocities(i, 1) * w01 * dx * dx / particle_volume;
-            u(grid_x + 1 + (grid_y + 1) * nx) += particle_velocities(i, 1) * w11 * dx * dx / particle_volume;
+        if (0 <= grid_x and grid_x < nx - 2 and 0 <= grid_y and grid_y <= ny) {
+            u(vel_x_size + grid_x + grid_y * nx) += particle_velocities(i, 1) * w00 * dx * dx / particle_volume;
+            u(vel_x_size + 1 + grid_y * nx) += particle_velocities(i, 1) * w10 * dx * dx / particle_volume;
+            u(vel_x_size + (grid_y + 1) * nx) += particle_velocities(i, 1) * w01 * dx * dx / particle_volume;
+            u(vel_x_size + 1 + (grid_y + 1) * nx) += particle_velocities(i, 1) * w11 * dx * dx / particle_volume;
         }
     }
 }
