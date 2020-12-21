@@ -7,6 +7,8 @@
 #include <igl/combine.h>
 #include <random>
 
+#include "particles_to_vel_grid_2d.h"
+#include "interpolate_vel_2d.h"
 #include "pressure_projection_2d.h"
 #include "fixed_zero_velocities_2d.h"
 #include "div_matrix_2d.h"
@@ -14,7 +16,6 @@
 #include "grad_grid_to_velocity_grid.h"
 #include "advect_2d.h"
 #include "apply_gravity_2d.h"
-#include "particles_to_velocity_grid_2d.h"
 
 
 bool rotate_grid(unsigned int key, Eigen::Matrix3d &R);
@@ -26,10 +27,11 @@ int main(int argc, char *argv[]) {
     // Main architecture goes as follows:
     // Values are hardcoded below, unless otherwise specified by command line arguments
 
-    int nx = 100, ny = 100;
+    int nx = 5, ny = 5;
     double spacing = 0.02;
     double dt = 0.1;
     double rho = 1;
+    double particle_volume = spacing * spacing;
     // global gravity vector
     Eigen::Vector3d g(0, -9.8, 0);
     // current rotation of grid
@@ -46,15 +48,15 @@ int main(int argc, char *argv[]) {
     int n = 1000;
     std::random_device rd;
     std::mt19937 mt(rd());
-    std::uniform_real_distribution<double> rand_x(0, nx);
-    std::uniform_real_distribution<double> rand_y(0, ny);
+    std::uniform_real_distribution<double> rand_x(0, nx * spacing);
+    std::uniform_real_distribution<double> rand_y(0, ny * spacing);
     Eigen::MatrixXd particles = Eigen::MatrixXd::Zero(n, 2);
     Eigen::MatrixXd particle_velocities = Eigen::MatrixXd::Zero(n, 2);
     for (int i = 0; i < n; i++) {
         particles(i, 0) = rand_x(mt);
         particles(i, 1) = rand_y(mt);
-        int px = floor(particles(i, 0));
-        int py = floor(particles(i, 1));
+        int px = floor(particles(i, 0) / spacing);
+        int py = floor(particles(i, 1) / spacing);
         num_particles_grid(px + py * nx)++;
     }
     Eigen::Vector3d particles_centre = Eigen::Vector3d(nx * spacing / 2, ny * spacing / 2, 0);
@@ -84,17 +86,19 @@ int main(int argc, char *argv[]) {
     // main simulation loop
     auto simulate = [&](double delta_t) {
         advect_2d(delta_t, particles, particle_velocities);
+
+        // project velocity onto grid
         Eigen::Vector2d gravity;
         // current normal to grid
         Eigen::Vector3d n_curr = R * n_original;
-        std::cout << "|n_curr|: " << n_curr.norm() << "\n";
         Eigen::Vector3d g_curr = R.transpose() * (g - g.dot(n_curr) * n_curr);
         Eigen::Vector2d g_curr_2d = g_curr.segment(0, 2);
-        std::cout << "g_curr: " << g_curr.transpose() << "\n";
+
         apply_gravity_2d(delta_t, g_curr_2d, particle_velocities);
-//        particles_to_velocity_grid_2d(particles, particle_velocities, nx, ny, u);
+        particles_to_vel_grid_2d(particles, particle_velocities, nx, ny, spacing, particle_volume, u);
         pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, D_to_vel, u_new);
         u = u_new;
+        interpolate_vel_2d(particles, u, nx, ny, spacing, particle_velocities);
     };
 
 
