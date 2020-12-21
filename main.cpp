@@ -150,19 +150,32 @@ int main(int argc, char *argv[]) {
     viewer.data().show_lines = false;
     viewer.core().lighting_factor = 0;
 
+    Eigen::RowVector3d c1 = Eigen::RowVector3d(1.0, 1.0, 1.0);
+    Eigen::RowVector3d c2 = Eigen::RowVector3d(1.0, 1.0, 0.0);
+    Eigen::RowVector3d c3 = Eigen::RowVector3d(0.0, 1.0, 1.0);
+    Eigen::RowVector3d c4 = Eigen::RowVector3d(1.0, 0.0, 1.0);
+    Eigen::RowVector3d c5 = Eigen::RowVector3d(0.0, 0.0, 0.0);
+
+    Eigen::MatrixXd particle_colours(particles.rows(), 3);
+    particle_colours << c1.replicate(particles.rows() / 5, 1),
+            c2.replicate(particles.rows() / 5, 1),
+            c3.replicate(particles.rows() / 5, 1),
+            c4.replicate(particles.rows() / 5, 1),
+            c5.replicate(particles.rows() - 4 * (particles.rows() / 5), 1);
+
     std::cout << R"(
     W,w      rotate up
     S,s      rotate down
     A,a      rotate left
     D,d      rotate right
     R,r      reset rotation
-    pls replace commands here lol
+    N,n      step time forward
     )";
     const auto set_points = [&]() {
         viewer.data().clear();
         Eigen::MatrixXd particles_3d = Eigen::MatrixXd::Zero(particles.rows(), 3);
         particles_3d.block(0, 0, particles.rows(), 2) += particles * spacing;
-        viewer.data().set_points(particles_3d, Eigen::RowVector3d::Ones());
+        viewer.data().set_points(particles_3d, particle_colours);
 //        viewer.data().set_mesh(V, F);
     };
 
@@ -189,7 +202,7 @@ int main(int argc, char *argv[]) {
         particles_3d.block(0, 0, particles.rows(), 2) = particles * spacing;
         Eigen::MatrixXd particles_3d_rot;
         apply_rotation(R, particles_centre, particles_3d, particles_3d_rot);
-        viewer.data().set_points(particles_3d_rot, Eigen::RowVector3d::Ones());
+        viewer.data().set_points(particles_3d_rot, particle_colours);
 //        Eigen::MatrixXd V_rot;
 //        apply_rotation(R, centre, V, V_rot);
 //        viewer.data().set_vertices(V_rot);
@@ -199,11 +212,6 @@ int main(int argc, char *argv[]) {
 
     Eigen::MatrixXd C(F.rows(), 3);
     // TODO: rename colours
-    Eigen::RowVector3d c1 = Eigen::RowVector3d(1.0, 1.0, 1.0);
-    Eigen::RowVector3d c2 = Eigen::RowVector3d(1.0, 1.0, 0.0);
-    Eigen::RowVector3d c3 = Eigen::RowVector3d(0.0, 1.0, 1.0);
-    Eigen::RowVector3d c4 = Eigen::RowVector3d(1.0, 0.0, 1.0);
-    Eigen::RowVector3d c5 = Eigen::RowVector3d(0.0, 0.0, 0.0);
     C << c1.replicate(F.rows() / 5, 1),
             c2.replicate(F.rows() / 5, 1),
             c3.replicate(F.rows() / 5, 1),
