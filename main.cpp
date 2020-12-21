@@ -7,55 +7,19 @@
 #include <igl/combine.h>
 #include <random>
 
-
-bool rotate_grid(int key, Eigen::Matrix3d &R) {
-    float deg = 5.0 * M_PI / 180.0;
-    Eigen::Matrix3d rot_right, rot_left, rot_up, rot_down;
-    rot_right << 1.0, 0.0, 0.0,
-            0.0, cos(deg), -sin(deg),
-            0.0, sin(deg), cos(deg);
-    rot_left << 1.0, 0.0, 0.0,
-            0.0, cos(-deg), -sin(-deg),
-            0.0, sin(-deg), cos(-deg);
-
-    rot_up << cos(deg), 0.0, -sin(deg),
-            0.0, 1.0, 0.0,
-            sin(deg), 0.0, cos(deg);
-    rot_down << cos(-deg), 0.0, -sin(-deg),
-            0.0, 1.0, 0.0,
-            sin(-deg), 0.0, cos(-deg);
-
-    switch (key) {
-        case 'W':
-        case 'w':
-            std::cout << "up" << std::endl;
-            R *= rot_up;
-            return true;
-        case 'S':
-        case 's':
-            std::cout << "down" << std::endl;
-            R *= rot_down;
-            return true;
-        case 'A':
-        case 'a':
-            std::cout << "left" << std::endl;
-            R *= rot_left;
-            return true;
-        case 'D':
-        case 'd':
-            std::cout << "right" << std::endl;
-            R *= rot_right;
-            return true;
-    }
-    return false;
-}
-
-
 #include "pressure_projection_2d.h"
 #include "fixed_zero_velocities_2d.h"
 #include "div_matrix_2d.h"
 #include "grad_matrix_2d.h"
+#include "advect_2d.h"
+#include "apply_gravity_2d.h"
+#include "particles_to_velocity_grid_2d.h"
 
+
+bool rotate_grid(unsigned int key, Eigen::Matrix3d &R);
+
+void apply_rotation(const Eigen::MatrixXd &R, const Eigen::RowVector3d &centre, const Eigen::MatrixXd &points,
+                    Eigen::MatrixXd &result);
 
 int main(int argc, char *argv[]) {
     // Main architecture goes as follows:
@@ -65,29 +29,34 @@ int main(int argc, char *argv[]) {
     double spacing = 0.02;
     double dt = 0.1;
     double rho = 1;
+    // global gravity vector
+    Eigen::Vector3d g(0, -9.8, 0);
+    // current rotation of grid
+    Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
+    // original normal to 2d grid, don't need when/if we do 3d implementation
+    Eigen::Vector3d n_original = Eigen::Vector3d(0, 0, 1);
 
     Eigen::Vector3d corner = Eigen::Vector3d(nx * spacing / -2.0, ny * spacing / -2.0, 0.0);
+    Eigen::Vector3d centre = corner + Eigen::Vector3d(nx * spacing / 2, ny * spacing / 2, 0);
 
-
-    Eigen::VectorXd num_particles = Eigen::VectorXd::Zero(nx * ny);
+    Eigen::VectorXd num_particles_grid = Eigen::VectorXd::Zero(nx * ny);
 
     // create particles
     int n = 1000;
     std::random_device rd;
     std::mt19937 mt(rd());
-    std::uniform_real_distribution<double> rand_x(corner(0), corner(0) + nx * spacing);
-    std::uniform_real_distribution<double> rand_y(corner(1), corner(1) + ny * spacing);
+    std::uniform_real_distribution<double> rand_x(0, nx);
+    std::uniform_real_distribution<double> rand_y(0, ny);
     Eigen::MatrixXd particles = Eigen::MatrixXd::Zero(n, 2);
     Eigen::MatrixXd particle_velocities = Eigen::MatrixXd::Zero(n, 2);
     for (int i = 0; i < n; i++) {
         particles(i, 0) = rand_x(mt);
         particles(i, 1) = rand_y(mt);
-        int px = floor(particles(i, 0) / spacing);
-        int py = floor(particles(i, 1) / spacing);
-        num_particles(px + py * nx)++;
-        std::cout << "indices: " << px << ", " << py << "\ncoords: " << particles(i, 0) << ", " << particles(i, 1)
-                  << "\n\n";
+        int px = floor(particles(i, 0));
+        int py = floor(particles(i, 1));
+        num_particles_grid(px + py * nx)++;
     }
+    Eigen::Vector3d particles_centre = Eigen::Vector3d(nx * spacing / 2, ny * spacing / 2, 0);
 
     int vel_dx_grid_size = (nx + 1) * ny;
     int vel_dy_grid_size = nx * (ny + 1);
@@ -102,13 +71,32 @@ int main(int argc, char *argv[]) {
     // create gradient matrix D
     Eigen::SparseMatrix<double> D;
     grad_matrix_2d(nx, ny, D);
-    pressure_projection_2d(u, nx, ny, spacing, dt, rho, PP, B, D, u_new);
+
+    std::cout << "B: " << B.rows() << ", " << B.cols() << "\n";
+    std::cout << "PP: " << PP.rows() << ", " << PP.cols() << "\n";
+    std::cout << "D: " << D.rows() << ", " << D.cols() << "\n";
+
+
+    // main simulation loop
+    auto simulate = [&](double delta_t) {
+        advect_2d(delta_t, particles, particle_velocities);
+        Eigen::Vector2d gravity;
+        // current normal to grid
+        Eigen::Vector3d n_curr = R * n_original;
+        std::cout << "|n_curr|: " << n_curr.norm() << "\n";
+        Eigen::Vector3d g_curr = R.transpose() * (g - g.dot(n_curr) * n_curr);
+        Eigen::Vector2d g_curr_2d = g_curr.segment(0, 2);
+        std::cout << "g_curr: " << g_curr.transpose() << "\n";
+        apply_gravity_2d(delta_t, g_curr_2d, particle_velocities);
+//        particles_to_velocity_grid_2d(particles, particle_velocities, nx, ny, u);
+        pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, u_new);
+        u = u_new;
+    };
 
 
     // visualizer code ----------------------------------------------------------------
     Eigen::RowVector3d center_viewer = Eigen::RowVector3d(0.0, 0.0, 0.0);
     // Helper function to rotate grid and update based on gravity
-    Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
 
     // Define a grid by the origin, dimensions in x, y,
     // a corner, and the grid spacing
@@ -118,7 +106,7 @@ int main(int argc, char *argv[]) {
     std::vector<Eigen::MatrixXd> Vs;
     std::vector<Eigen::MatrixXi> Fs;
     for (int i = 0; i < grid_points.rows(); i++) {
-        if (num_particles(i) > 0) {
+        if (num_particles_grid(i) > 0) {
             Eigen::MatrixXd V_cube;
             Eigen::MatrixXi F_cube;
             make_cube(grid_points.row(i), Eigen::Vector3d::Ones() * spacing, V_cube, F_cube);
@@ -134,6 +122,7 @@ int main(int argc, char *argv[]) {
     // Create a libigl Viewer object to toggle between point cloud and mesh
     igl::opengl::glfw::Viewer viewer;
     viewer.data().show_lines = false;
+    viewer.core().lighting_factor = 0;
 
     std::cout << R"(
     P,p      view point cloud
@@ -156,14 +145,22 @@ int main(int argc, char *argv[]) {
             case 'a':
             case 'D':
             case 'd':
+            case 'R':
+            case 'r':
                 rotate_grid(key, R);
                 break;
             case 'N':
             case 'n':
-                break;
+                simulate(dt);
         }
-        // viewer.data().set_points(V * R.transpose(), center_viewer);
-        viewer.data().set_vertices(V * R.transpose());
+        Eigen::MatrixXd particles_3d = Eigen::MatrixXd::Zero(particles.rows(), 3);
+        particles_3d.block(0, 0, particles.rows(), 2) = particles * spacing;
+        Eigen::MatrixXd particles_3d_rot;
+        apply_rotation(R, particles_centre, particles_3d, particles_3d_rot);
+        viewer.data().set_points(particles_3d_rot, Eigen::RowVector3d::Ones());
+        Eigen::MatrixXd V_rot;
+        apply_rotation(R, centre, V, V_rot);
+        viewer.data().set_vertices(V_rot);
 
         return false;
     };
@@ -179,7 +176,7 @@ int main(int argc, char *argv[]) {
             c2.replicate(F.rows() / 5, 1),
             c3.replicate(F.rows() / 5, 1),
             c4.replicate(F.rows() / 5, 1),
-            c5.replicate(F.rows() / 5, 1);
+            c5.replicate(F.rows() - 4 * (F.rows() / 5), 1);
 
 
     // paint_colours(nx, ny, C);
@@ -190,4 +187,52 @@ int main(int argc, char *argv[]) {
     viewer.launch();
 
     return EXIT_SUCCESS;
+}
+
+bool rotate_grid(unsigned int key, Eigen::Matrix3d &R) {
+    float deg = 5.0 * M_PI / 180.0;
+    Eigen::Matrix3d rot_right, rot_left, rot_up, rot_down;
+    rot_right << 1.0, 0.0, 0.0,
+            0.0, cos(deg), -sin(deg),
+            0.0, sin(deg), cos(deg);
+    rot_left << rot_right.transpose();
+
+    rot_up << cos(deg), 0.0, -sin(deg),
+            0.0, 1.0, 0.0,
+            sin(deg), 0.0, cos(deg);
+    rot_down << rot_up.transpose();
+
+    switch (key) {
+        case 'W':
+        case 'w':
+            std::cout << "up" << std::endl;
+            R *= rot_up;
+            return true;
+        case 'S':
+        case 's':
+            std::cout << "down" << std::endl;
+            R *= rot_down;
+            return true;
+        case 'A':
+        case 'a':
+            std::cout << "left" << std::endl;
+            R *= rot_left;
+            return true;
+        case 'D':
+        case 'd':
+            std::cout << "right" << std::endl;
+            R *= rot_right;
+            return true;
+        case 'R':
+        case 'r':
+            std::cout << "reset" << std::endl;
+            R = Eigen::Matrix3d::Identity();
+            return true;
+    }
+    return false;
+}
+
+void apply_rotation(const Eigen::MatrixXd &R, const Eigen::RowVector3d &centre, const Eigen::MatrixXd &points,
+                    Eigen::MatrixXd &result) {
+    result = (points - centre.replicate(points.rows(), 1)) * R.transpose();
 }
