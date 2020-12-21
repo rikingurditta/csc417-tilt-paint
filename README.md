@@ -1,8 +1,12 @@
 # CSC417 Final Project - Tilt Paint
 
+By Rikin Gurditta and Roya Shams
+
 ---
 
-If you are cloning from Markus and have any git-related issues, try cloning from our public repo at https://github.com/rikingurditta/csc417-tilt-paint
+## Video
+
+Here is our video: [...]
 
 ## How to compile
 
