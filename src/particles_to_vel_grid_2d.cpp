@@ -14,6 +14,7 @@ void particles_to_vel_grid_2d(Eigen::MatrixXd &particles,
         double y = particles(i, 1) / dx;
         int grid_x = floor(x);
         int grid_y = floor(y);
+        std::cout << grid_x << ", " << grid_y << "\n";
         // bilinear interpolation weights
         double w00 = (grid_x + 1 - x) * (grid_y + 1 - y);
         double w10 = (x - grid_x) * (grid_y + 1 - y);

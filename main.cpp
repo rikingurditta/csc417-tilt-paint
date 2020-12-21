@@ -27,13 +27,13 @@ int main(int argc, char *argv[]) {
     // Main architecture goes as follows:
     // Values are hardcoded below, unless otherwise specified by command line arguments
 
-    int nx = 5, ny = 5;
-    double spacing = 0.02;
+    int nx = 10, ny = 10;
+    double spacing = 1;
     double dt = 0.1;
     double rho = 1;
     double particle_volume = spacing * spacing;
     // global gravity vector
-    Eigen::Vector3d g(0, -9.8, 0);
+    Eigen::Vector3d g(0, -0.1, 0);
     // current rotation of grid
     Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
     // original normal to 2d grid, don't need when/if we do 3d implementation
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     Eigen::VectorXd num_particles_grid = Eigen::VectorXd::Zero(nx * ny);
 
     // create particles
-    int n = 1000;
+    int n = 20;
     std::random_device rd;
     std::mt19937 mt(rd());
     std::uniform_real_distribution<double> rand_x(0, nx * spacing);
@@ -53,8 +53,8 @@ int main(int argc, char *argv[]) {
     Eigen::MatrixXd particles = Eigen::MatrixXd::Zero(n, 2);
     Eigen::MatrixXd particle_velocities = Eigen::MatrixXd::Zero(n, 2);
     for (int i = 0; i < n; i++) {
-        particles(i, 0) = rand_x(mt);
-        particles(i, 1) = rand_y(mt);
+        particles(i, 0) = i % nx;
+        particles(i, 1) = ((int)(i / nx)) + 3;
         int px = floor(particles(i, 0) / spacing);
         int py = floor(particles(i, 1) / spacing);
         num_particles_grid(px + py * nx)++;
@@ -85,8 +85,8 @@ int main(int argc, char *argv[]) {
 
     // main simulation loop
     auto simulate = [&](double delta_t) {
+//        std::cout << particles << "\n\n";
         advect_2d(delta_t, particles, particle_velocities);
-
         // project velocity onto grid
         Eigen::Vector2d gravity;
         // current normal to grid
@@ -96,8 +96,25 @@ int main(int argc, char *argv[]) {
 
         apply_gravity_2d(delta_t, g_curr_2d, particle_velocities);
         particles_to_vel_grid_2d(particles, particle_velocities, nx, ny, spacing, particle_volume, u);
+        int vel_x_size = (nx + 1) * ny;
+        int vel_y_size = nx * (ny + 1);
+        for (int j = 0; j < ny; j++) {
+            for (int i = 0; i < nx + 1; i++) {
+                std::cout << u(i + j * (nx + 1)) << " ";
+            }
+            std::cout << "\n";
+        }
+        for (int j = 0; j < ny + 1; j++) {
+            for (int i = 0; i < nx; i++) {
+                std::cout << u(vel_x_size + i + j * nx) << " ";
+            }
+            std::cout << "\n";
+        }
+        std::cout << "\n\n";
+//        std::cout << u.transpose() << "\n";
         pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, D_to_vel, u_new);
         u = u_new;
+//        std::cout << "u: " << u.transpose() << "\n";
         interpolate_vel_2d(particles, u, nx, ny, spacing, particle_velocities);
     };
 
@@ -109,18 +126,18 @@ int main(int argc, char *argv[]) {
     // Define a grid by the origin, dimensions in x, y,
     // a corner, and the grid spacing
     Eigen::MatrixXd grid_points;
-    make_grid(nx, ny, corner, spacing, grid_points);
+    make_grid(nx, ny, corner + Eigen::Vector3d(0, 0, -1), spacing, grid_points);
 
     std::vector<Eigen::MatrixXd> Vs;
     std::vector<Eigen::MatrixXi> Fs;
     for (int i = 0; i < grid_points.rows(); i++) {
-        if (num_particles_grid(i) > 0) {
+//        if (num_particles_grid(i) > 0) {
             Eigen::MatrixXd V_cube;
             Eigen::MatrixXi F_cube;
             make_cube(grid_points.row(i), Eigen::Vector3d::Ones() * spacing, V_cube, F_cube);
             Vs.emplace_back(V_cube);
             Fs.emplace_back(F_cube);
-        }
+//        }
     }
     Eigen::MatrixXd V;
     Eigen::MatrixXi F;
@@ -138,8 +155,10 @@ int main(int argc, char *argv[]) {
     )";
     const auto set_points = [&]() {
         viewer.data().clear();
-        // viewer.data().set_points(grid_points, center_viewer);
-        viewer.data().set_mesh(V, F);
+        Eigen::MatrixXd particles_3d = Eigen::MatrixXd::Zero(particles.rows(), 3);
+        particles_3d.block(0, 0, particles.rows(), 2) -= particles * spacing;
+        viewer.data().set_points(particles_3d, Eigen::Vector3d::Ones());
+//        viewer.data().set_mesh(V, F);
     };
 
     set_points();
@@ -166,9 +185,9 @@ int main(int argc, char *argv[]) {
         Eigen::MatrixXd particles_3d_rot;
         apply_rotation(R, particles_centre, particles_3d, particles_3d_rot);
         viewer.data().set_points(particles_3d_rot, Eigen::RowVector3d::Ones());
-        Eigen::MatrixXd V_rot;
-        apply_rotation(R, centre, V, V_rot);
-        viewer.data().set_vertices(V_rot);
+//        Eigen::MatrixXd V_rot;
+//        apply_rotation(R, centre, V, V_rot);
+//        viewer.data().set_vertices(V_rot);
 
         return false;
     };
@@ -191,7 +210,7 @@ int main(int argc, char *argv[]) {
 
     viewer.data().set_colors(C);
     viewer.data().set_face_based(true);
-    viewer.data().point_size = 2;
+    viewer.data().point_size = 5;
     viewer.launch();
 
     return EXIT_SUCCESS;
