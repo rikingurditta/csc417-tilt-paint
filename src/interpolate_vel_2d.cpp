@@ -17,6 +17,7 @@ void interpolate_vel_2d(Eigen::MatrixXd &particles,
         double w10 = (x - grid_x) * (grid_y + 1 - y);
         double w01 = (grid_x + 1 - x) * (y - grid_y);
         double w11 = (x - grid_x) * (y - grid_y);
+        // interpolate particle velocities from velocity grid
         if (0 <= grid_x and grid_x < nx and 0 <= grid_y and grid_y < ny) {
             particle_velocities(i, 0) = w00 * u(grid_x + grid_y * (nx + 1))
                                         + w10 * u((grid_x + 1) + grid_y * (nx + 1))

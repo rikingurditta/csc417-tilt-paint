@@ -12,12 +12,12 @@ void particles_to_vel_grid_2d(Eigen::MatrixXd &particles,
     for (int i = 0; i < particles.rows(); i++) {
         double x = particles(i, 0) / dx;  // unstretch by dx
         double y = particles(i, 1) / dx;
+        // x and y grids are staggered in different ways and have different dimensions, so must treat them separately
         int xgrid_x = floor(x);
         int xgrid_y = floor(y - 0.5);
         int ygrid_x = floor(x - 0.5);
         int ygrid_y = floor(y);
-//        std::cout << grid_x << ", " << grid_y << "\n";
-        // bilinear interpolation weights
+        // bilinear interpolation weights - using these based on explanation in Bridson's book
         double x_w00 = (xgrid_x + 1 - x) * (xgrid_y + 1 - y);
         double x_w10 = (x - xgrid_x) * (xgrid_y + 1 - y);
         double x_w01 = (xgrid_x + 1 - x) * (y - xgrid_y);

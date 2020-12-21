@@ -10,10 +10,10 @@
 #include "particles_to_vel_grid_2d.h"
 #include "interpolate_vel_2d.h"
 #include "pressure_projection_2d.h"
-#include "fixed_zero_velocities_2d.h"
+#include "vel_grid_to_grad_grid_2d.h"
 #include "div_matrix_2d.h"
 #include "grad_matrix_2d.h"
-#include "grad_grid_to_velocity_grid.h"
+#include "grad_grid_to_vel_grid_2d.h"
 #include "advect_2d.h"
 #include "apply_gravity_2d.h"
 
@@ -23,17 +23,19 @@ bool rotate_grid(unsigned int key, Eigen::Matrix3d &R);
 void apply_rotation(const Eigen::MatrixXd &R, const Eigen::RowVector3d &centre, const Eigen::MatrixXd &points,
                     Eigen::MatrixXd &result);
 
+void naive_viscosity_2d(const Eigen::VectorXd &u, const int nx, const int ny, Eigen::VectorXd &u_new);
+
 int main(int argc, char *argv[]) {
     // Main architecture goes as follows:
     // Values are hardcoded below, unless otherwise specified by command line arguments
 
-    int nx = 20, ny = 20;
+    int nx = 30, ny = 30;
     double spacing = 0.5;
     double dt = 0.01;
-    double rho = 1;
+    double rho = 0.1;
     double particle_volume = spacing * spacing;
     // global gravity vector
-    Eigen::Vector3d g(0, -9.8, 0);
+    Eigen::Vector3d g(0, -9.8 * 10, 0);
     // current rotation of grid
     Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
     // original normal to 2d grid, don't need when/if we do 3d implementation
@@ -46,37 +48,34 @@ int main(int argc, char *argv[]) {
 
     // create particles
     int n = 100;
-    std::random_device rd;
-    std::mt19937 mt(rd());
-    std::uniform_real_distribution<double> rand_x(0, nx * spacing);
-    std::uniform_real_distribution<double> rand_y(0, ny * spacing);
     Eigen::MatrixXd particles = Eigen::MatrixXd::Zero(n, 2);
     Eigen::MatrixXd particle_velocities = Eigen::MatrixXd::Zero(n, 2);
     for (int i = 0; i < n; i++) {
         particles(i, 0) = i % nx * spacing;
-        particles(i, 1) = (((int) (i / nx)) / 2. + 3) * spacing;
+        particles(i, 1) = (((int) (i / nx)) / 2. + ny / 3) * spacing;
         int px = floor(particles(i, 0) / spacing);
         int py = floor(particles(i, 1) / spacing);
-        num_particles_grid(px + py * nx)++;
+        num_particles_grid(px + py * nx)++;  // count number of particles in each grid cell
     }
-    Eigen::Vector3d particles_centre = Eigen::Vector3d(nx * spacing / 2, ny * spacing / 2, 0);
+    Eigen::Vector3d particles_centre = Eigen::Vector3d::Zero(); // Eigen::Vector3d(nx * spacing / 2, ny * spacing / 2, 0);
 
     int vel_dx_grid_size = (nx + 1) * ny;
     int vel_dy_grid_size = nx * (ny + 1);
+    // velocity grid
     Eigen::VectorXd u = Eigen::VectorXd::Zero(vel_dx_grid_size + vel_dy_grid_size);
-    Eigen::VectorXd u_new = Eigen::VectorXd::Zero(vel_dx_grid_size + vel_dy_grid_size);
-    // create matrix B which, given gradient, calculates divergence
+    Eigen::VectorXd u_temp = Eigen::VectorXd::Zero(vel_dx_grid_size + vel_dy_grid_size);
+    // create matrix B which calculates Δx * divergence of a vector field
     Eigen::SparseMatrix<double> B;
     div_matrix_2d(nx, ny, B);
     // create matrix PP which gets rid of boundary velocities
     Eigen::SparseMatrix<double> PP;
-    fixed_zero_velocities(nx, ny, PP);
+    vel_grid_to_grad_grid_2d(nx, ny, PP);
     // create gradient matrix D
     Eigen::SparseMatrix<double> D;
     grad_matrix_2d(nx, ny, D);
 
     Eigen::SparseMatrix<double> D_to_vel;
-    grad_grid_to_velocity_grid(nx, ny, D_to_vel);
+    grad_grid_to_vel_grid_2d(nx, ny, D_to_vel);
 
     std::cout << "B: " << B.rows() << ", " << B.cols() << "\n";
     std::cout << "PP: " << PP.rows() << ", " << PP.cols() << "\n";
@@ -112,8 +111,10 @@ int main(int argc, char *argv[]) {
 //        }
 //        std::cout << "\n\n";
 //        std::cout << u.transpose() << "\n";
-        pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, D_to_vel, u_new);
-        u = u_new;
+        pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, D_to_vel, u_temp);
+        u = u_temp;
+//        naive_viscosity_2d(u, nx, ny, u_temp);
+//        u = u_temp;
 //        std::cout << "u: " << u.transpose() << "\n";
         interpolate_vel_2d(particles, u, nx, ny, spacing, particle_velocities);
     };
@@ -144,20 +145,24 @@ int main(int argc, char *argv[]) {
     igl::combine(Vs, Fs, V, F);
 
 
-    // Create a libigl Viewer object to toggle between point cloud and mesh
+    // Create a libigl Viewer object
     igl::opengl::glfw::Viewer viewer;
     viewer.data().show_lines = false;
     viewer.core().lighting_factor = 0;
 
     std::cout << R"(
-    P,p      view point cloud
+    W,w      rotate up
+    S,s      rotate down
+    A,a      rotate left
+    D,d      rotate right
+    R,r      reset rotation
     pls replace commands here lol
     )";
     const auto set_points = [&]() {
         viewer.data().clear();
         Eigen::MatrixXd particles_3d = Eigen::MatrixXd::Zero(particles.rows(), 3);
-        particles_3d.block(0, 0, particles.rows(), 2) -= particles * spacing;
-        viewer.data().set_points(particles_3d, Eigen::Vector3d::Ones());
+        particles_3d.block(0, 0, particles.rows(), 2) += particles * spacing;
+        viewer.data().set_points(particles_3d, Eigen::RowVector3d::Ones());
 //        viewer.data().set_mesh(V, F);
     };
 
@@ -219,15 +224,15 @@ int main(int argc, char *argv[]) {
 bool rotate_grid(unsigned int key, Eigen::Matrix3d &R) {
     float deg = 5.0 * M_PI / 180.0;
     Eigen::Matrix3d rot_right, rot_left, rot_up, rot_down;
-    rot_right << 1.0, 0.0, 0.0,
+    rot_left << cos(deg), -sin(deg), 0.0,
+            sin(deg), cos(deg), 0.0,
+            0.0, 0.0, 1.0;
+    rot_right << rot_left.transpose();
+
+    rot_down << 1.0, 0.0, 0.0,
             0.0, cos(deg), -sin(deg),
             0.0, sin(deg), cos(deg);
-    rot_left << rot_right.transpose();
-
-    rot_up << cos(deg), 0.0, -sin(deg),
-            0.0, 1.0, 0.0,
-            sin(deg), 0.0, cos(deg);
-    rot_down << rot_up.transpose();
+    rot_up << rot_down.transpose();
 
     switch (key) {
         case 'W':
@@ -259,8 +264,44 @@ bool rotate_grid(unsigned int key, Eigen::Matrix3d &R) {
     return false;
 }
 
+
+// this doesn't really work properly with the centre :/
 void apply_rotation(const Eigen::MatrixXd &R, const Eigen::RowVector3d &centre, const Eigen::MatrixXd &points,
                     Eigen::MatrixXd &result) {
     Eigen::MatrixXd shift_centre = centre.replicate(points.rows(), 1);
     result = (points - shift_centre) * R.transpose() + shift_centre;
+}
+
+// naive - not physics based, just turns each velocity into average of velocities around it
+// this is problematic as it causes the viscosity to depend very heavily on timestep
+void naive_viscosity_2d(const Eigen::VectorXd &u, const int nx, const int ny, Eigen::VectorXd &u_new) {
+    int vel_dx_grid_size = (nx + 1) * ny;
+    int vel_dy_grid_size = nx * (ny + 1);
+    u_new = Eigen::VectorXd::Zero(vel_dx_grid_size + vel_dy_grid_size);
+    for (int i = 1; i < nx; i++) {
+        for (int j = 1; j < ny - 1; j++) {
+            u_new(i + j * (nx + 1)) = (u(i - 1 + (j - 1) * (nx + 1))
+                                       + u(i + (j - 1) * (nx + 1))
+                                       + u(i + 1 + (j - 1) * (nx + 1))
+                                       + u(i - 1 + j * (nx + 1))
+                                       + u(i + j * (nx + 1))
+                                       + u(i + 1 + j * (nx + 1))
+                                       + u(i - 1 + (j + 1) * (nx + 1))
+                                       + u(i + (j + 1) * (nx + 1))
+                                       + u(i + 1 + (j + 1) * (nx + 1))) / 9;
+        }
+    }
+    for (int i = 1; i < nx - 1; i++) {
+        for (int j = 1; j < ny; j++) {
+            u_new(vel_dx_grid_size + i + j * nx) = (u(vel_dx_grid_size + i - 1 + (j - 1) * nx)
+                                                    + u(vel_dx_grid_size + i + (j - 1) * nx)
+                                                    + u(vel_dx_grid_size + i + 1 + (j - 1) * nx)
+                                                    + u(vel_dx_grid_size + i - 1 + j * nx)
+                                                    + u(vel_dx_grid_size + i + j * nx)
+                                                    + u(vel_dx_grid_size + i + 1 + j * nx)
+                                                    + u(vel_dx_grid_size + i - 1 + (j + 1) * nx)
+                                                    + u(vel_dx_grid_size + i + (j + 1) * nx)
+                                                    + u(vel_dx_grid_size + i + 1 + (j + 1) * nx)) / 9;
+        }
+    }
 }

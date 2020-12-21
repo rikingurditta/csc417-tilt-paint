@@ -1,7 +1,7 @@
-#include "fixed_zero_velocities_2d.h"
+#include "vel_grid_to_grad_grid_2d.h"
 #include <iostream>
 
-void fixed_zero_velocities(int nx, int ny, Eigen::SparseMatrix<double> &PP) {
+void vel_grid_to_grad_grid_2d(int nx, int ny, Eigen::SparseMatrix<double> &PP) {
     std::vector<Eigen::Triplet<double>> tl;
     int in_dx_grid_size = (nx + 1) * ny;
     int in_dy_grid_size = nx * (ny + 1);

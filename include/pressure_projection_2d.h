@@ -7,7 +7,7 @@
 //      of size nx+1 by ny and y_vel is is the horizontal staggered velocity grid of size nx by ny+1
 //  nx - grid x size
 //  ny - grid y size
-//  nx - grid cell width
+//  dx - grid cell width
 //  dt - time step
 //  rho - fluid density
 //  PP - sparse matrix so that PP * u = u without edge velocities

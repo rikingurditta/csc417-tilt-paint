@@ -9,6 +9,7 @@ void div_matrix_2d(const int nx, const int ny, Eigen::SparseMatrix<double> &B) {
     for (int i = 1; i < nx - 1; i++) {
         for (int j = 1; j < ny - 1; j++) {
             int cell = i + j * nx;
+            // sum finite differences in both directions (without dividing by Δx - can do this outside)
             tl.emplace_back(cell, (i - 1) + (j - 1) * (nx - 1), -1);
             tl.emplace_back(cell, i + (j - 1) * (nx - 1), 1);
             tl.emplace_back(cell, (i - 1) + (j - 1) * nx + dx_grid_size, -1);
