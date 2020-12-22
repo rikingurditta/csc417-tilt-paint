@@ -1,12 +1,12 @@
 # CSC417 Final Project - Tilt Paint
 
-By Rikin Gurditta and Roya Shams
+By Rikin Gurditta and Roya Shams-Zadeh-Amiri
 
 ---
 
 ## Video
 
-Here is our video: [...]
+Here is our video: https://drive.google.com/file/d/1ycEQbujZiCwDj8drVXzYqyF2lIv3_XMB/view?usp=sharing
 
 ## How to compile
 
