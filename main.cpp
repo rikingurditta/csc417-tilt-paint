@@ -17,12 +17,8 @@
 #include "advect_2d.h"
 #include "apply_gravity_2d.h"
 #include "naive_viscosity_2d.h"
-
-
-bool rotate_grid(unsigned int key, Eigen::Matrix3d &R);
-
-void apply_rotation(const Eigen::MatrixXd &R, const Eigen::RowVector3d &centre, const Eigen::MatrixXd &points,
-                    Eigen::MatrixXd &result);
+#include "rotate_grid.h"
+#include "apply_rotation.h"
 
 int main(int argc, char *argv[]) {
     // Main architecture goes as follows:
@@ -82,14 +78,8 @@ int main(int argc, char *argv[]) {
     Eigen::SparseMatrix<double> D_to_vel;
     grad_grid_to_vel_grid_2d(nx, ny, D_to_vel);
 
-    std::cout << "B: " << B.rows() << ", " << B.cols() << "\n";
-    std::cout << "PP: " << PP.rows() << ", " << PP.cols() << "\n";
-    std::cout << "D: " << D.rows() << ", " << D.cols() << "\n";
-
-
     // main simulation loop
     auto simulate = [&](double delta_t) {
-//        std::cout << particles << "\n\n";
         advect_2d(delta_t, nx, ny, spacing, particles, particle_velocities);
         // project velocity onto grid
         Eigen::Vector2d gravity;
@@ -100,27 +90,11 @@ int main(int argc, char *argv[]) {
 
         apply_gravity_2d(delta_t, g_curr_2d, particle_velocities);
         particles_to_vel_grid_2d(particles, particle_velocities, nx, ny, spacing, particle_volume, u);
-//        int vel_x_size = (nx + 1) * ny;
-//        int vel_y_size = nx * (ny + 1);
-//        for (int j = 0; j < ny; j++) {
-//            for (int i = 0; i < nx + 1; i++) {
-//                std::cout << u(i + j * (nx + 1)) << " ";
-//            }
-//            std::cout << "\n";
-//        }
-//        for (int j = 0; j < ny + 1; j++) {
-//            for (int i = 0; i < nx; i++) {
-//                std::cout << u(vel_x_size + i + j * nx) << " ";
-//            }
-//            std::cout << "\n";
-//        }
-//        std::cout << "\n\n";
-//        std::cout << u.transpose() << "\n";
+
         pressure_projection_2d(u, nx, ny, spacing, delta_t, rho, PP, B, D, D_to_vel, u_temp);
         u = u_temp;
         naive_viscosity_2d(u, nx, ny, u_temp);
         u = u_temp;
-//        std::cout << "u: " << u.transpose() << "\n";
         interpolate_vel_2d(particles, u, nx, ny, spacing, particle_velocities);
     };
 
@@ -207,23 +181,18 @@ int main(int argc, char *argv[]) {
         Eigen::MatrixXd particles_3d_rot;
         apply_rotation(R, particles_centre, particles_3d, particles_3d_rot);
         viewer.data().set_points(particles_3d_rot, particle_colours);
-//        Eigen::MatrixXd V_rot;
-//        apply_rotation(R, centre, V, V_rot);
-//        viewer.data().set_vertices(V_rot);
 
         return false;
     };
 
     Eigen::MatrixXd C(F.rows(), 3);
-    // TODO: rename colours
+    // Set colours
     C << c1.replicate(F.rows() / 5, 1),
             c2.replicate(F.rows() / 5, 1),
             c3.replicate(F.rows() / 5, 1),
             c4.replicate(F.rows() / 5, 1),
             c5.replicate(F.rows() - 4 * (F.rows() / 5), 1);
 
-
-    // paint_colours(nx, ny, C);
 
     viewer.data().set_colors(C);
     viewer.data().set_face_based(true);
