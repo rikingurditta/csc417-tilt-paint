@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     // main simulation loop
     auto simulate = [&](double delta_t) {
 //        std::cout << particles << "\n\n";
-        advect_2d(delta_t, nx, ny, spacing, particles, particle_velocities);
+        advect_2d(delta_t, nx, ny, spacing, particle_velocities, particles);
         // project velocity onto grid
         Eigen::Vector2d gravity;
         // current normal to grid
