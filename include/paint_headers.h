@@ -2,9 +2,13 @@
 // Header files for painting sim
 
 
-// Make regular grid 
+// Make regular grid
+ 
 // Inputs
-//   P  #P by 3 list of input points
+//   nx - length of x
+//   ny - lenght of y
+//   corner - "origin" point of grid
+//   spacing - amount of grid space between points
 // Outputs:
 //  grid_points : nx * ny * nz x 3 matrix of grid nodes
 void make_grid(

@@ -3,6 +3,7 @@
 
 
 // Make some paint colours
+// Doesn't work, don't worry about this :))))
 
 void paint_colours(
     const int nx,
@@ -29,25 +30,4 @@ void paint_colours(
             colour_mat.row(ind) = Eigen::RowVector3d(0.0, 0.1 * i, 0.2 * j);
         }
     }
-
-
-    // for (int f = 0; f < factor; f++) {
-    //     for (int i = o_x; i < o_x + factor; i++) {
-    //         for (int j = o_y; i < o_y + factor; j++) {
-    //             // Assign a colour 
-    //             int ind = nx * j + i;
-    //             std::cout << ind <<"," << o_x <<"," << o_y<< std::endl;
-    //             // colour_mat.row(ind) = Eigen::RowVector3d(0.0, 0.1 * i, 0.2 * j);
-    //         }
-    //     }
-
-    //     o_x += factor / 2;
-    //     o_y += factor / 2;
-    // }
-
-
-
-
-
-
 }
