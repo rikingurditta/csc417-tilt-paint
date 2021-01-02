@@ -8,6 +8,10 @@ By Rikin Gurditta and Roya Shams-Zadeh-Amiri
 
 Here is our video: https://drive.google.com/file/d/1ycEQbujZiCwDj8drVXzYqyF2lIv3_XMB/view?usp=sharing
 
+## Report
+
+Here is our report: [CSC417_Final_Project_Report.pdf](CSC417_Final_Project_Report.pdf)
+
 ## How to compile
 
 Our code can be built like any other `cmake` project:
